@@ -1,0 +1,64 @@
+version: '3.8'
+
+volumes:
+  datafiles:
+
+services:
+
+  website:
+    container_name: website
+    build: app_auth/
+    ports: 
+        - "5000:80"
+    volumes:
+        - ./app_auth/:/var/www/html/
+    depends_on:
+      - mysql
+    networks:
+      network:
+        ipv4_address: 172.2.0.2
+    restart: always
+
+  flask:
+    build: app_auth/flask/
+    container_name: flask
+    restart: always
+    ports:
+      - "5001:5001"
+    environment:
+      - FLASK_APP=server
+      - FLASK_ENV=development
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - website
+    networks:
+      network:
+        ipv4_address: 172.2.0.3
+
+  mysql:
+    container_name: spoton
+    image: mysql:8.0.0
+    command: --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_DATABASE=spoton
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=admin
+      - MYSQL_ROOT_PASSWORD=admin
+    volumes:
+      - datafiles:/var/lib/mysql
+      - ./app_auth/api/db/spoton.sql:/docker-entrypoint-initdb.d/spoton.sql
+    restart: always
+    networks:
+      network:
+        ipv4_address: 172.2.0.4
+    cap_add:
+      - SYS_NICE
+
+networks:
+  network:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.2.0.0/16
